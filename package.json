@@ -1,0 +1,50 @@
+{
+  "name": "mosaic-grid-package",
+  "version": "1.0.0",
+  "private": false,
+  "main": "./dist/mosaic-grid.umd.js",
+  "module": "./dist/mosaic-grid.es.js",
+  "types": "./dist/types.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/mosaic-grid.es.js",
+      "require": "./dist/mosaic-grid.umd.js"
+    },
+    "./types": {
+      "import": "./dist/types.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite demo",
+    "clean": "rimraf dist",
+    "prepare": "npm run build",
+    "test": "vitest"
+  },
+  "keywords": [
+    "web-components",
+    "image-grid",
+    "mosaic",
+    "typescript",
+    "modal-viewer",
+    "responsive-grid",
+    "framework-agnostic"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/mosaic-grid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/mosaic-grid/issues"
+  },
+  "homepage": "https://github.com/yourusername/mosaic-grid#readme",
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "rimraf": "^5.0.5",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0",
+    "jsdom": "^24.0.0"
+  },
+  "peerDependencies": {},
+  "dependencies": {}
+}
