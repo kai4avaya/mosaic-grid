@@ -1,18 +1,23 @@
 
 // src/types.ts
 
-// 1. Define all possible content types we'll support
-export type ContentType = 'image' | 'pdf' | 'markdown' | 'video' | 'external_link' | 'other';
+export type ContentType = 'image' | 'pdf' | 'markdown' | 'video' | 'external_link' | 'custom';
 
-// 2. Define the possible layouts (from your original code)
 export type LayoutType = 'normal' | 'wide' | 'tall' | 'big';
+
+export type CustomRenderHandler = (item: MosaicItem) => Promise<string>;
+
+// Preview renderer for custom tile previews (synchronous for performance)
+export type PreviewRenderHandler = (item: MosaicItem) => string;
 
 // 3. Define the base "stub" for any item
 //    All items MUST have a type and a preview image.
 interface MosaicItemBase {
   id: string; // A unique ID is crucial for state management
   type: ContentType;
-  preview: string; // The image URL for the grid tile
+  preview: string; // The image URL for the grid tile (fallback for accessibility/loading)
+  previewHtml?: string; // Optional static HTML for custom tile preview
+  previewRenderer?: PreviewRenderHandler; // Optional function to generate custom preview HTML
   title?: string; // Optional title for accessibility/tooltips
   layout?: LayoutType;
 }
@@ -45,12 +50,12 @@ export interface LinkItem extends MosaicItemBase {
     url: string; // URL to open in a new tab
 }
 
-export interface OtherItem extends MosaicItemBase {
-    type: 'other';
-    src?: string;
+export interface CustomItem extends MosaicItemBase {
+    type: 'custom';
+    handler: CustomRenderHandler; // Required for custom items
 }
 // 5. The final, public type. It's one of any of our "stubbed" cases.
-export type MosaicItem = ImageItem | PdfItem | MarkdownItem | VideoItem | LinkItem | OtherItem
+export type MosaicItem = ImageItem | PdfItem | MarkdownItem | VideoItem | LinkItem | CustomItem
 
 // 6. Define the component's possible states (also "stubbing")
 export type GridState = 'idle' | 'item-expanded' | 'loading';

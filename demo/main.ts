@@ -2,10 +2,10 @@
 // demo/main.ts
 
 // 1. Import the component class. This "registers" the custom element.
-impordemo '../src/mosaic-grid'; 
+import '../src/mosaic-grid'; 
 
 // 2. Import the types
-import { MosaicItem } from '../src/types';
+import { MosaicItem, CustomItem } from '../src/types';
 
 // 3. The data, translated from your original HTML
 const demoItems: MosaicItem[] = [
@@ -23,8 +23,8 @@ const demoItems: MosaicItem[] = [
       preview: 'https://images.unsplash.com/photo-1587588354456-ae376af71a25?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1350&q=80',
       full: 'https://images.unsplash.com/photo-1587588354456-ae376af71a25?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1350&q=80' },
     { id: '5', type: 'image', layout: 'normal',
-      preview: ' https://images.unsplash.com/photo-1558980663-3685c1d673c4?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1000&amp;q=60',
-      full: ' https://images.unsplash.com/photo-1558980663-3685c1d673c4?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1000&amp;q=60' },
+      preview: 'https://images.unsplash.com/photo-1558980663-3685c1d673c4?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1000&q=60',
+      full: 'https://images.unsplash.com/photo-1558980663-3685c1d673c4?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1000&q=60' },
     { id: '6', type: 'image', layout: 'tall',
       preview: 'https://images.unsplash.com/photo-1588499756884-d72584d84df5?ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=2134&amp;q=80',
       full: 'https://images.unsplash.com/photo-1588499756884-d72584d84df5?ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=2134&amp;q=80' },
@@ -77,11 +77,11 @@ const demoItems: MosaicItem[] = [
       preview: 'https://images.unsplash.com/photo-1527928159272-7d012024eb74?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1350&amp;q=80',
       full: 'https://images.unsplash.com/photo-1527928159272-7d012024eb74?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1350&amp;q=80' },
     { id: '23', type: 'image', layout: 'normal',
-      preview: 'https://images.unsplash.com/photo-1553984840-b8cbc34f5215?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1350&amp;q=80',
-      full: 'https://images.unsplash.com/photo-1553984840-b8cbc34f5215?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&img' },
+      preview: 'https://images.unsplash.com/photo-1553984840-b8cbc34f5215?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1350&q=80',
+      full: 'https://images.unsplash.com/photo-1553984840-b8cbc34f5215?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1350&q=80' },
     { id: '24', type: 'image', layout: 'normal',
-      preview: 'https://images.unsplash.com/photo-1433446787703-42d5bf446876?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1351&amp;q=80',
-      full: 'httpss://images.unsplash.com/photo-1433446787703-42d5bf446876?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1351&amp;q=80' },
+      preview: 'https://images.unsplash.com/photo-1433446787703-42d5bf446876?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1351&q=80',
+      full: 'https://images.unsplash.com/photo-1433446787703-42d5bf446876?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1351&q=80' },
     { id: '25', type: 'image', layout: 'tall',
       preview: 'https://images.unsplash.com/photo-1540979388789-6cee28a1cdc9?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=634&amp;q=80',
       full: 'https://images.unsplash.com/photo-1540979388789-6cee28a1cdc9?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=634&amp;q=80' },
@@ -89,31 +89,320 @@ const demoItems: MosaicItem[] = [
       preview: 'https://images.unsplash.com/photo-1421930866250-aa0594cea05c?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1355&amp;q=80',
       full: 'https://images.unsplash.com/photo-1421930866250-aa0594cea05c?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1355&amp;q=80' },
     { id: '27', type: 'image', layout: 'normal',
-      preview: 'https://images.unsplash.com/photo-1493306454986-c8877a09cbeb?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1381&amp;q=80',
-      full: 'httpsJhttps://images.unsplash.com/photo-1493306454986-c8877a09cbeb?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1381&amp;q=80' },
+      preview: 'https://images.unsplash.com/photo-1493306454986-c8877a09cbeb?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1381&q=80',
+      full: 'https://images.unsplash.com/photo-1493306454986-c8877a09cbeb?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1381&q=80' },
     { id: '28', type: 'image', layout: 'wide',
       preview: 'https://images.unsplash.com/photo-1536466528142-f752ae7bdd0c?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1350&amp;q=80',
       full: 'https://images.unsplash.com/photo-1536466528142-f752ae7bdd0c?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=crop&amp;w=1350&amp;q=80' },
     { id: '29', type: 'image', layout: 'big',
-      preview: 'https://images.unsplash.com/photo-1541187714594-731deadcd16a?ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=700&amp;q=80',
-      full: 'httpsD://images.unsplash.com/photo-1541187714594-731deadcd16a?ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=700&amp;q=80' },
+      preview: 'https://images.unsplash.com/photo-1541187714594-731deadcd16a?ixlib=rb-1.2.1&auto=format&fit=crop&w=700&q=80',
+      full: 'https://images.unsplash.com/photo-1541187714594-731deadcd16a?ixlib=rb-1.2.1&auto=format&fit=crop&w=700&q=80' },
 
     // --- NEW: PDF and Markdown examples ---
     { id: '30', type: 'pdf', layout: 'tall',
-      preview: 'https(://i.imgur.com/gY98BvJ.png', // A fake PDF thumbnail
+      preview: 'https://via.placeholder.com/400x600/4A90E2/FFFFFF?text=PDF', // PDF thumbnail placeholder
       src: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       title: 'Sample PDF Document' },
     { id: '31', type: 'markdown', layout: 'normal',
-      preview: 'https(://i.imgur.com/3Z7wTso.png', // A fake MD thumbnail
+      preview: 'https://via.placeholder.com/400x400/50C878/FFFFFF?text=Markdown', // Markdown thumbnail placeholder
       src: 'https://raw.githubusercontent.com/google/g-colab-extras/master/README.md',
       title: 'Sample Markdown File' },
+
+    // --- Add New Tile ---
+    { 
+        id: 'add-new', 
+        type: 'custom', 
+        layout: 'normal',
+        preview: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect fill="transparent"/></svg>',
+        previewHtml: `
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+                overflow: hidden;
+            ">
+                <div style="
+                    position: absolute;
+                    width: 200%;
+                    height: 200%;
+                    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+                    animation: shimmer 3s ease-in-out infinite;
+                "></div>
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: relative; z-index: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <style>
+                    @keyframes shimmer {
+                        0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+                        50% { transform: translate(-50%, -50%) rotate(180deg); }
+                    }
+                </style>
+            </div>
+        `,
+        handler: async () => {
+            // Immediately show modal and reset grid
+            if (gridElement) {
+                // Reset any expanded tile
+                (gridElement as any).resetGrid?.();
+            }
+            // Small delay to ensure grid resets before showing modal
+            setTimeout(() => {
+                showAddImageModal();
+            }, 50);
+            return '<div class="markdown-body">Opening add image dialog...</div>';
+        }
+    } as CustomItem,
 ];
 
 
 // 4. Find the component and give it the data
+let currentItems: MosaicItem[] = [...demoItems];
+let gridElement: any = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-  const grid = document.querySelector('mosaic-grid-widget');
-  if (grid) {
-    grid.items = demoItems;
+  gridElement = document.querySelector('mosaic-grid-widget');
+  if (gridElement) {
+    gridElement.items = currentItems;
   }
+  
+  // Create modal HTML
+  createAddImageModal();
 });
+
+// Function to show the add image modal
+function showAddImageModal() {
+  const modal = document.getElementById('add-image-modal');
+  const overlay = document.getElementById('modal-overlay');
+  if (modal && overlay) {
+    overlay.style.display = 'flex';
+    modal.style.display = 'block';
+    const input = document.getElementById('image-url-input') as HTMLInputElement;
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+  }
+}
+
+// Function to hide the modal
+function hideAddImageModal() {
+  const modal = document.getElementById('add-image-modal');
+  const overlay = document.getElementById('modal-overlay');
+  if (modal && overlay) {
+    overlay.style.display = 'none';
+    modal.style.display = 'none';
+  }
+}
+
+// Function to add new image to the grid
+function addImageToGrid(imageUrl: string) {
+  if (!imageUrl || !imageUrl.trim()) {
+    alert('Please enter a valid image URL');
+    return;
+  }
+
+  // Generate unique ID
+  const newId = `img-${Date.now()}`;
+  
+  // Create new image item
+  const newItem: MosaicItem = {
+    id: newId,
+    type: 'image',
+    layout: 'normal',
+    preview: imageUrl,
+    full: imageUrl,
+    title: 'New Image'
+  };
+
+  // Insert before the add-new tile (keep it at the end)
+  const addNewIndex = currentItems.findIndex(item => item.id === 'add-new');
+  if (addNewIndex > -1) {
+    currentItems.splice(addNewIndex, 0, newItem);
+  } else {
+    currentItems.push(newItem);
+  }
+
+  // Update grid
+  if (gridElement) {
+    gridElement.items = currentItems;
+  }
+
+  // Hide modal
+  hideAddImageModal();
+}
+
+// Create modal HTML and styles
+function createAddImageModal() {
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-overlay';
+  overlay.style.cssText = `
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+  `;
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.id = 'add-image-modal';
+  modal.style.cssText = `
+    display: none;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease-out;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  `;
+
+  modal.innerHTML = `
+    <h2 style="
+      color: white;
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    ">Add New Image</h2>
+    
+    <label for="image-url-input" style="
+      display: block;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 8px;
+      font-size: 14px;
+    ">Image URL</label>
+    
+    <input 
+      type="url" 
+      id="image-url-input" 
+      placeholder="https://example.com/image.jpg"
+      style="
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+        font-size: 16px;
+        margin-bottom: 24px;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+      "
+      onfocus="this.style.borderColor='rgba(102, 126, 234, 0.5)'"
+      onblur="this.style.borderColor='rgba(255, 255, 255, 0.1)'"
+      onkeydown="if(event.key === 'Enter') { document.getElementById('add-btn').click(); }"
+    />
+    
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <button 
+        id="cancel-btn"
+        style="
+          padding: 12px 24px;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          background: transparent;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.2s;
+        "
+        onmouseover="this.style.borderColor='rgba(255, 255, 255, 0.4)'; this.style.color='white'"
+        onmouseout="this.style.borderColor='rgba(255, 255, 255, 0.2)'; this.style.color='rgba(255, 255, 255, 0.8)'"
+      >Cancel</button>
+      
+      <button 
+        id="add-btn"
+        style="
+          padding: 12px 24px;
+          border: none;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        "
+        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(102, 126, 234, 0.6)'"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'"
+      >Add Image</button>
+    </div>
+  `;
+
+  // Add styles
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+      from { 
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    #image-url-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    
+    #image-url-input:focus {
+      outline: none;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Event listeners
+  modal.querySelector('#cancel-btn')?.addEventListener('click', hideAddImageModal);
+  modal.querySelector('#add-btn')?.addEventListener('click', () => {
+    const input = document.getElementById('image-url-input') as HTMLInputElement;
+    if (input) {
+      addImageToGrid(input.value);
+    }
+  });
+
+  // Close on overlay click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      hideAddImageModal();
+    }
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const overlay = document.getElementById('modal-overlay');
+      if (overlay && overlay.style.display === 'flex') {
+        hideAddImageModal();
+      }
+    }
+  });
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
