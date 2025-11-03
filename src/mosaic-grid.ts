@@ -7,6 +7,7 @@ class MosaicGridWidget extends HTMLElement {
     private _state: GridState = 'idle';
     private gridWrapper: HTMLDivElement | null = null;
     private expandedTile: HTMLDivElement | null = null;
+    private intersectionObserver: IntersectionObserver | null = null;
 
     constructor() {
         super();
@@ -16,6 +17,15 @@ class MosaicGridWidget extends HTMLElement {
     connectedCallback() {
         this.render();
         this.attachListeners();
+        this.setupIntersectionObserver();
+    }
+
+    disconnectedCallback() {
+        // Clean up observer when component is removed
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+            this.intersectionObserver = null;
+        }
     }
 
     public set items(data: MosaicItem[]) {
@@ -25,7 +35,6 @@ class MosaicGridWidget extends HTMLElement {
     
     private render() {
         if (!this.shadowRoot) {
-            console.error('Shadow root not available');
             return;
         }
 
@@ -72,10 +81,7 @@ class MosaicGridWidget extends HTMLElement {
                 }
 
                 /* 4. Click Interaction Styling */
-                .grid-wrapper.item-is-expanded > div:not(.expanded) {
-                    opacity: 0.3;
-                    transform: scale(0.9) translateZ(0);
-                }
+                /* Removed overlay effect - other tiles stay fully visible */
                 .grid-wrapper > div.expanded {
                     grid-column: span 2;
                     grid-row: span 2;
@@ -131,10 +137,6 @@ class MosaicGridWidget extends HTMLElement {
             <div class="grid-wrapper"></div>
         `;
         this.gridWrapper = this.shadowRoot.querySelector('.grid-wrapper');
-        
-        if (!this.gridWrapper) {
-            console.error('Failed to find grid-wrapper element in shadow DOM');
-        }
     }
     
     private populateGrid() {
@@ -160,17 +162,58 @@ class MosaicGridWidget extends HTMLElement {
                 // Static HTML preview
                 div.innerHTML = item.previewHtml;
             } else {
-                // Default: background image
-                div.style.backgroundImage = `url(${item.preview})`;
+                // Lazy load preview images - store URL in data attribute
+                div.dataset.previewUrl = item.preview;
+                // Don't set backgroundImage yet - Intersection Observer will load it
+                // Set a placeholder or empty state initially
+                div.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
             }
             
             wrapper.appendChild(div);
+            
+            // Observe this tile for lazy loading (only if it uses background image)
+            if (!item.previewRenderer && !item.previewHtml && this.intersectionObserver) {
+                this.intersectionObserver.observe(div);
+            }
         });
+    }
+
+    private setupIntersectionObserver() {
+        // Check if IntersectionObserver is available (not available in jsdom/test environments)
+        if (typeof IntersectionObserver === 'undefined') {
+            return;
+        }
+        
+        // Create Intersection Observer for lazy loading images
+        // Load images when they're within 200px of viewport (rootMargin)
+        // Use document as root since shadow DOM elements need document viewport
+        this.intersectionObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    const tile = entry.target as HTMLDivElement;
+                    const previewUrl = tile.dataset.previewUrl;
+                    
+                    if (entry.isIntersecting && previewUrl) {
+                        // Load the background image
+                        tile.style.backgroundImage = `url(${previewUrl})`;
+                        tile.removeAttribute('data-preview-url');
+                        tile.style.backgroundColor = ''; // Remove placeholder
+                        
+                        // Stop observing this tile (image is now loaded)
+                        this.intersectionObserver?.unobserve(tile);
+                    }
+                });
+            },
+            {
+                root: null, // Use viewport (document)
+                rootMargin: '200px', // Start loading 200px before tile enters viewport
+                threshold: 0.01 // Trigger as soon as any part is visible
+            }
+        );
     }
 
     private attachListeners() {
         if (!this.shadowRoot) {
-            console.error('Shadow root not available for attaching listeners');
             return;
         }
 
@@ -197,7 +240,6 @@ class MosaicGridWidget extends HTMLElement {
         
         // Safety check: ensure gridWrapper exists
         if (!this.gridWrapper) {
-            console.error('Grid wrapper not initialized');
             return;
         }
 
@@ -279,7 +321,6 @@ class MosaicGridWidget extends HTMLElement {
                 });
             }
         } catch (error) {
-            console.error('Failed to load custom content:', error);
             if (this.expandedTile === tile) {
                 requestAnimationFrame(() => {
                     if (this.expandedTile === tile) {
@@ -311,7 +352,8 @@ class MosaicGridWidget extends HTMLElement {
         switch (item.type) {
             case 'image':
                 const imageItem = item as ImageItem;
-                return `<img src=\"${imageItem.full}\" alt=\"${item.title || ''}\" class=\"full-content\">`;
+                // Use native lazy loading for full images (only loaded when expanded)
+                return `<img src=\"${imageItem.full}\" alt=\"${item.title || ''}\" class=\"full-content\" loading=\"lazy\">`;
             
             case 'video':
                 const videoItem = item as VideoItem;

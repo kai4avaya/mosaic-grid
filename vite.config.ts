@@ -33,6 +33,7 @@ export default defineConfig({
         globals: true,
         
         // Tells Vitest where to find your test files
-        include: ['tests/**/*.{test,spec}.ts'],
+        // Use absolute path since root is 'demo'
+        include: [resolve(__dirname, 'tests/**/*.{test,spec}.ts')],
     }
 });

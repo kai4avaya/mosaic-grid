@@ -2,6 +2,8 @@
 
 A framework-agnostic web component for creating beautiful, animated mosaic-style content grids. Display images, PDFs, videos, markdown files, and external links in a responsive grid layout with smooth expand/collapse animations.
 
+> **Inspiration**: This package was originally inspired by the beautiful mosaic grid design from [CodePen by iamsaief](https://codepen.io/iamsaief/pen/jObaoKo). We've reimagined it as a reusable, type-safe web component with enhanced features including lazy loading, custom previews, and support for multiple content types.
+
 ## Features
 
 - ?? **Responsive Mosaic Layout** - Automatic grid layout with customizable tile sizes (normal, wide, tall, big)
