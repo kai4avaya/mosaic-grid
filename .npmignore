@@ -1,0 +1,36 @@
+# Source files (not needed in npm package, except types.ts)
+src/*.ts
+!src/types.ts
+tests/
+demo/
+
+# Development files
+*.md
+!README.md
+.gitignore
+.npmignore
+tsconfig.json
+vite.config.ts
+
+# Build tools
+node_modules/
+
+# Test files
+*.test.ts
+*.spec.ts
+
+# Development scripts
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.*

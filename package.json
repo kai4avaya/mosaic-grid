@@ -1,17 +1,22 @@
 {
-  "name": "mosaic-grid-package",
+  "name": "mosaic-grid-widget",
   "version": "1.0.0",
+  "description": "A framework-agnostic web component for creating beautiful, animated mosaic-style content grids with lazy loading and custom previews",
+  "author": "",
+  "license": "MIT",
   "private": false,
   "main": "./dist/mosaic-grid.umd.js",
-  "module": "./dist/mosaic-grid.es.js",
-  "types": "./dist/types.d.ts",
+  "module": "./dist/mosaic-grid.mjs",
+  "types": "./src/types.ts",
   "exports": {
     ".": {
-      "import": "./dist/mosaic-grid.es.js",
-      "require": "./dist/mosaic-grid.umd.js"
+      "import": "./dist/mosaic-grid.mjs",
+      "require": "./dist/mosaic-grid.umd.js",
+      "types": "./src/types.ts"
     },
     "./types": {
-      "import": "./dist/types.d.ts"
+      "import": "./src/types.ts",
+      "types": "./src/types.ts"
     }
   },
   "scripts": {

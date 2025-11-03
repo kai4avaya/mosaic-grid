@@ -8,6 +8,10 @@ class MosaicGridWidget extends HTMLElement {
     private gridWrapper: HTMLDivElement | null = null;
     private expandedTile: HTMLDivElement | null = null;
     private intersectionObserver: IntersectionObserver | null = null;
+    // Track preloaded images: Map<tileElement, Image>
+    private preloadedImages: Map<HTMLDivElement, HTMLImageElement> = new Map();
+    // Track which full image URLs are currently loading/loaded
+    private imageLoadCache: Map<string, { image: HTMLImageElement; loaded: boolean }> = new Map();
 
     constructor() {
         super();
@@ -175,6 +179,11 @@ class MosaicGridWidget extends HTMLElement {
             if (!item.previewRenderer && !item.previewHtml && this.intersectionObserver) {
                 this.intersectionObserver.observe(div);
             }
+            
+            // Add hover listeners for image preloading (only for image items)
+            if (item.type === 'image') {
+                this._attachHoverPreload(div, item as ImageItem);
+            }
         });
     }
 
@@ -230,6 +239,68 @@ class MosaicGridWidget extends HTMLElement {
         });
     }
     
+    /**
+     * Attach hover listeners to preload full images
+     * This starts downloading the full image when user hovers, so it's ready on click
+     */
+    private _attachHoverPreload(tile: HTMLDivElement, item: ImageItem) {
+        let hoverTimeout: number | null = null;
+        let preloadImage: HTMLImageElement | null = null;
+        
+        // On hover: start preloading full image after a small delay (prevents preloading on accidental hovers)
+        tile.addEventListener('mouseenter', () => {
+            // Small delay to avoid preloading on quick mouse movements
+            hoverTimeout = window.setTimeout(() => {
+                this._preloadFullImage(item.full, tile);
+            }, 100); // 100ms delay
+        });
+        
+        // On mouse leave: cancel preload if not needed (though browser will cache it anyway)
+        tile.addEventListener('mouseleave', () => {
+            if (hoverTimeout !== null) {
+                clearTimeout(hoverTimeout);
+                hoverTimeout = null;
+            }
+        });
+    }
+    
+    /**
+     * Preload a full image URL and cache it
+     * Uses a shared cache so multiple tiles with same URL don't duplicate requests
+     */
+    private _preloadFullImage(fullUrl: string, tile: HTMLDivElement): void {
+        // Check if already cached/loading
+        const cached = this.imageLoadCache.get(fullUrl);
+        if (cached) {
+            // Already loading or loaded, just store reference
+            this.preloadedImages.set(tile, cached.image);
+            return;
+        }
+        
+        // Create new Image object to preload
+        const img = new Image();
+        img.src = fullUrl;
+        
+        // Store in cache
+        this.imageLoadCache.set(fullUrl, { image: img, loaded: false });
+        this.preloadedImages.set(tile, img);
+        
+        // Mark as loaded when complete
+        img.onload = () => {
+            const cached = this.imageLoadCache.get(fullUrl);
+            if (cached) {
+                cached.loaded = true;
+            }
+        };
+        
+        // Handle errors gracefully
+        img.onerror = () => {
+            // Remove from cache on error so we can retry later
+            this.imageLoadCache.delete(fullUrl);
+            this.preloadedImages.delete(tile);
+        };
+    }
+    
     private async onItemClick(item: MosaicItem, tile: HTMLDivElement) {
         if (item.type === 'external_link') {
             window.open(item.url, '_blank', 'noopener,noreferrer');
@@ -274,8 +345,14 @@ class MosaicGridWidget extends HTMLElement {
             // For synchronous content (images), render final content immediately
             // For async content (markdown, custom), show placeholder then load
             if (this._isSynchronousContent(item)) {
-                const contentHTML = this._getContentSync(item);
+                const contentHTML = this._getContentSync(item, tile);
                 tile.innerHTML = contentHTML;
+                
+                // If image wasn't preloaded, we need to handle the fade-in manually
+                // (preloaded images already have the loaded class)
+                if (item.type === 'image') {
+                    this._setupProgressiveImageFade(tile);
+                }
             } else {
                 // Show placeholder, then load async content
                 tile.innerHTML = this._generateInlineContent(item);
@@ -305,6 +382,44 @@ class MosaicGridWidget extends HTMLElement {
                 tile.style.backgroundImage = `url(${item.preview})`;
             }
         }
+        
+        // Clean up preload reference (image stays in cache for reuse)
+        this.preloadedImages.delete(tile);
+    }
+    
+    /**
+     * Setup progressive image fade-in for images that weren't preloaded
+     * This ensures the fade animation works even if image loads after DOM insertion
+     */
+    private _setupProgressiveImageFade(tile: HTMLDivElement): void {
+        const fullImg = tile.querySelector('.progressive-image-full') as HTMLImageElement;
+        const previewImg = tile.querySelector('.progressive-image-preview') as HTMLImageElement;
+        
+        if (!fullImg || !previewImg) return;
+        
+        // If image is already loaded (preloaded), trigger fade immediately
+        if (fullImg.complete && fullImg.naturalWidth > 0) {
+            // Use RAF to ensure DOM is ready
+            requestAnimationFrame(() => {
+                fullImg.classList.add('loaded');
+                previewImg.classList.add('hidden');
+            });
+            return;
+        }
+        
+        // Otherwise, wait for load event
+        fullImg.addEventListener('load', () => {
+            requestAnimationFrame(() => {
+                fullImg.classList.add('loaded');
+                previewImg.classList.add('hidden');
+            });
+        }, { once: true });
+        
+        // Handle case where image fails to load
+        fullImg.addEventListener('error', () => {
+            // Keep preview visible if full image fails
+            console.warn('Failed to load full image:', fullImg.src);
+        }, { once: true });
     }
 
     private async _loadContentAsync(item: MosaicItem, tile: HTMLDivElement) {
@@ -347,13 +462,13 @@ class MosaicGridWidget extends HTMLElement {
         return item.type === 'image' || item.type === 'video' || item.type === 'pdf';
     }
 
-    private _getContentSync(item: MosaicItem): string {
+    private _getContentSync(item: MosaicItem, tile?: HTMLDivElement): string {
         // Synchronous content generation (no async operations)
         switch (item.type) {
             case 'image':
                 const imageItem = item as ImageItem;
-                // Use native lazy loading for full images (only loaded when expanded)
-                return `<img src=\"${imageItem.full}\" alt=\"${item.title || ''}\" class=\"full-content\" loading=\"lazy\">`;
+                // Progressive loading: show preview first, then fade in full image
+                return this._generateProgressiveImageHTML(imageItem, tile);
             
             case 'video':
                 const videoItem = item as VideoItem;
@@ -366,6 +481,34 @@ class MosaicGridWidget extends HTMLElement {
             default:
                 return `<p>Unsupported content type for sync rendering.</p>`;
         }
+    }
+    
+    /**
+     * Generate HTML for progressive image loading
+     * Shows preview immediately, then fades in full image when loaded
+     */
+    private _generateProgressiveImageHTML(item: ImageItem, tile?: HTMLDivElement): string {
+        const alt = item.title || '';
+        const previewUrl = item.preview;
+        const fullUrl = item.full;
+        
+        // Check if image was preloaded (from hover)
+        let preloadedImg: HTMLImageElement | null = null;
+        if (tile) {
+            preloadedImg = this.preloadedImages.get(tile) || null;
+        }
+        
+        // If preloaded and already loaded, we can show it immediately
+        const isPreloaded = preloadedImg && preloadedImg.complete && preloadedImg.naturalWidth > 0;
+        
+        // Generate container with preview and full image
+        // Note: Event listeners are set up in _setupProgressiveImageFade() for non-preloaded images
+        return `
+            <div class="progressive-image-container">
+                <img src="${previewUrl}" alt="${alt}" class="progressive-image-preview" />
+                <img src="${fullUrl}" alt="${alt}" class="progressive-image-full ${isPreloaded ? 'loaded' : ''}" />
+            </div>
+        `;
     }
 
     private async _getContent(item: MosaicItem): Promise<string> {
