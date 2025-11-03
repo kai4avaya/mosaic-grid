@@ -6,13 +6,15 @@ A framework-agnostic web component for creating beautiful, animated mosaic-style
 
 ## Features
 
-- ?? **Responsive Mosaic Layout** - Automatic grid layout with customizable tile sizes (normal, wide, tall, big)
-- ??? **Multiple Content Types** - Support for images, PDFs, videos, markdown files, and external links
-- ? **Smooth Animations** - CSS transitions for expand/collapse interactions
-- ?? **Shadow DOM** - Encapsulated styles and markup, preventing conflicts
-- ?? **Framework Agnostic** - Works with any framework or vanilla JavaScript
-- ?? **TypeScript** - Full type safety with discriminated unions
-- ? **Accessible** - ARIA labels and semantic HTML
+- **Responsive Mosaic Layout** - Automatic grid layout with customizable tile sizes (normal, wide, tall, big)
+- **Multiple Content Types** - Support for images, PDFs, videos, markdown files, external links, and custom content
+- **Lazy Loading** - Images load automatically as they enter the viewport for optimal performance
+- **Custom Previews** - Use custom HTML or render functions for tile previews (gradients, icons, etc.)
+- **Smooth Animations** - CSS transitions for expand/collapse interactions
+- **Shadow DOM** - Encapsulated styles and markup, preventing conflicts
+- **Framework Agnostic** - Works with any framework or vanilla JavaScript
+- **TypeScript** - Full type safety with discriminated unions
+- **Performance Optimized** - Uses `requestAnimationFrame` and GPU acceleration for smooth interactions
 
 ## Installation
 
@@ -103,12 +105,16 @@ The grid automatically adjusts based on screen size:
 
 The component handles different content types through a discriminated union pattern:
 
-- **Image**: Displays preview as background, full image on expand
+- **Image**: Displays preview as background, full image on expand. Previews are lazy-loaded by default.
 - **PDF**: Embeds PDF in an iframe when expanded
 - **Video**: Shows video player with controls
 - **Markdown**: Fetches and displays markdown content (currently as plain text)
 - **External Link**: Opens URL in new tab
-- **Other**: Placeholder for custom content types
+- **Custom**: Uses a custom handler function to render content on click
+
+### Lazy Loading
+
+Images are automatically lazy-loaded using the Intersection Observer API. Images start loading when they're within 200px of the viewport, improving initial page load performance. Custom HTML previews (`previewHtml` or `previewRenderer`) are rendered immediately and bypass lazy loading.
 
 ## API Reference
 
@@ -138,7 +144,7 @@ grid.items = [
 The base type for all grid items. Uses discriminated unions based on the `type` field.
 
 ```typescript
-type MosaicItem = ImageItem | PdfItem | MarkdownItem | VideoItem | LinkItem | OtherItem
+type MosaicItem = ImageItem | PdfItem | MarkdownItem | VideoItem | LinkItem | CustomItem
 ```
 
 #### `ImageItem`
@@ -147,10 +153,12 @@ type MosaicItem = ImageItem | PdfItem | MarkdownItem | VideoItem | LinkItem | Ot
 {
   id: string;
   type: 'image';
-  preview: string;      // URL for thumbnail/background
+  preview: string;      // URL for thumbnail/background (lazy-loaded)
   full: string;         // URL for full-resolution image
   title?: string;       // Optional title
   layout?: LayoutType;  // 'normal' | 'wide' | 'tall' | 'big'
+  previewHtml?: string; // Optional custom HTML for preview
+  previewRenderer?: PreviewRenderHandler; // Optional function to generate preview HTML
 }
 ```
 
@@ -206,11 +214,42 @@ type MosaicItem = ImageItem | PdfItem | MarkdownItem | VideoItem | LinkItem | Ot
 }
 ```
 
+#### `CustomItem`
+
+```typescript
+{
+  id: string;
+  type: 'custom';
+  preview: string;      // Fallback preview URL (for accessibility)
+  handler: CustomRenderHandler; // Function that returns HTML when tile is clicked
+  previewHtml?: string; // Optional custom HTML for preview
+  previewRenderer?: PreviewRenderHandler; // Optional function to generate preview HTML
+  title?: string;
+  layout?: LayoutType;
+}
+```
+
 #### `LayoutType`
 
 ```typescript
 type LayoutType = 'normal' | 'wide' | 'tall' | 'big';
 ```
+
+#### `PreviewRenderHandler`
+
+```typescript
+type PreviewRenderHandler = (item: MosaicItem) => string;
+```
+
+Synchronous function that returns HTML string for tile preview. Used for custom previews that don't require async operations.
+
+#### `CustomRenderHandler`
+
+```typescript
+type CustomRenderHandler = (item: MosaicItem) => Promise<string>;
+```
+
+Async function that returns HTML string when a custom tile is clicked. Used for dynamic content loading.
 
 ## Examples
 
@@ -233,9 +272,63 @@ const imageGallery: MosaicItem[] = [
     full: '/photos/image2-full.jpg',
     layout: 'wide',
     title: 'Ocean waves'
-  },
-  // ... more images
+  }
 ];
+```
+
+### Custom HTML Preview
+
+```typescript
+const customTile: MosaicItem = {
+  id: 'custom1',
+  type: 'image',
+  preview: 'data:image/svg+xml,<svg>...</svg>', // Fallback
+  full: 'https://example.com/image.jpg',
+  previewHtml: `
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+      <svg width="64" height="64"><circle cx="32" cy="32" r="24" fill="white"/></svg>
+    </div>
+  `,
+  layout: 'normal'
+};
+```
+
+### Custom Preview Renderer
+
+```typescript
+const customRendererTile: MosaicItem = {
+  id: 'custom2',
+  type: 'image',
+  preview: 'fallback.jpg',
+  full: 'https://example.com/image.jpg',
+  previewRenderer: (item) => {
+    // Generate custom HTML based on item properties
+    return `<div style="background: radial-gradient(circle, ${item.id === 'custom2' ? '#ff6b6b' : '#4ecdc4'});
+                        width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+              <span style="color: white; font-size: 24px;">Custom</span>
+            </div>`;
+  },
+  layout: 'normal'
+};
+```
+
+### Custom Content Handler
+
+```typescript
+const customContentTile: CustomItem = {
+  id: 'custom3',
+  type: 'custom',
+  preview: 'placeholder.jpg',
+  handler: async (item) => {
+    // Fetch or generate content dynamically
+    const response = await fetch('https://api.example.com/content');
+    const data = await response.json();
+    return `<div class="custom-content">${data.html}</div>`;
+  },
+  previewHtml: '<div style="background: #667eea; color: white; padding: 20px;">Click to load</div>',
+  layout: 'normal'
+};
 ```
 
 ### Mixed Content Grid
@@ -295,6 +388,7 @@ The internal grid uses:
 - Smooth CSS transitions for animations
 - Hover effects on tiles
 - Responsive breakpoints at 768px
+- GPU acceleration for smooth transforms
 
 ## Browser Support
 
@@ -305,6 +399,7 @@ The internal grid uses:
   - Custom Elements API
   - Shadow DOM
   - CSS Grid
+  - Intersection Observer API (for lazy loading)
 
 ## Development
 
@@ -357,6 +452,15 @@ The component uses Shadow DOM with `mode: 'open'` to:
 - Prevent CSS conflicts
 - Encapsulate component internals
 
+### Performance Optimizations
+
+The component includes several performance optimizations:
+
+- **Lazy Loading**: Images load on-demand using Intersection Observer
+- **requestAnimationFrame**: DOM updates are batched using RAF to prevent layout thrashing
+- **GPU Acceleration**: CSS transforms use `translateZ(0)` to trigger hardware acceleration
+- **CSS Containment**: Tiles use `contain: layout style paint` for rendering isolation
+
 ### State Management
 
 The component maintains internal state:
@@ -367,8 +471,8 @@ The component maintains internal state:
 ### Animation System
 
 Animations use CSS transitions with cubic-bezier easing:
-- Grid column/row changes: 0.5s transition
-- Transform/opacity: 0.5s transition
+- Grid column/row changes: 0.3s transition
+- Transform/opacity: 0.3s transition
 - Hover effects: Immediate transform scale
 
 ### Type Safety
@@ -395,8 +499,3 @@ Contributions are welcome! Please ensure:
 ## License
 
 [Add your license here]
-
-## Links
-
-- [GitHub Repository](https://github.com/yourusername/mosaic-grid)
-- [Issue Tracker](https://github.com/yourusername/mosaic-grid/issues)
