@@ -118,6 +118,410 @@ This demo shows how to:
 </html>
 ```
 
+## Framework Integration
+
+### React
+
+Since `mosaic-grid-widget` is a web component, it works seamlessly with React. Here's how to use it:
+
+#### Basic React Example
+
+```tsx
+import React, { useEffect, useRef } from 'react';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+function MosaicGrid() {
+  const gridRef = useRef<HTMLElement>(null);
+  const [items, setItems] = React.useState<MosaicItem[]>([
+    {
+      id: '1',
+      type: 'image',
+      preview: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4',
+      full: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4',
+      layout: 'big',
+      title: 'Mountain Landscape'
+    },
+    {
+      id: '2',
+      type: 'image',
+      preview: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b',
+      full: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b',
+      layout: 'wide',
+      title: 'Ocean View'
+    }
+  ]);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (grid) {
+      // Type assertion needed because React doesn't know about custom element properties
+      (grid as any).items = items;
+    }
+  }, [items]);
+
+  return (
+    <mosaic-grid-widget ref={gridRef} />
+  );
+}
+
+export default MosaicGrid;
+```
+
+#### React with TypeScript and Custom Types
+
+For better type safety, you can extend the custom element interface:
+
+```tsx
+import React, { useEffect, useRef } from 'react';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+// Extend the custom element interface for TypeScript
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'mosaic-grid-widget': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          items?: MosaicItem[];
+        },
+        HTMLElement
+      >;
+    }
+  }
+}
+
+interface MosaicGridProps {
+  items: MosaicItem[];
+  onItemClick?: (item: MosaicItem) => void;
+}
+
+function MosaicGrid({ items, onItemClick }: MosaicGridProps) {
+  const gridRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (grid) {
+      (grid as any).items = items;
+      
+      // Listen to custom events if needed
+      const handleExpand = (e: CustomEvent) => {
+        if (onItemClick) {
+          onItemClick(e.detail.item);
+        }
+      };
+      
+      grid.addEventListener('card-expanded', handleExpand as EventListener);
+      return () => {
+        grid.removeEventListener('card-expanded', handleExpand as EventListener);
+      };
+    }
+  }, [items, onItemClick]);
+
+  return <mosaic-grid-widget ref={gridRef} />;
+}
+
+export default MosaicGrid;
+```
+
+#### React Hook Example
+
+Create a reusable hook for easier integration:
+
+```tsx
+import { useEffect, useRef, useState } from 'react';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+function useMosaicGrid(items: MosaicItem[]) {
+  const gridRef = useRef<HTMLElement>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (grid) {
+      (grid as any).items = items;
+      setIsReady(true);
+    }
+  }, [items]);
+
+  const updateItems = (newItems: MosaicItem[]) => {
+    const grid = gridRef.current;
+    if (grid) {
+      (grid as any).items = newItems;
+    }
+  };
+
+  return { gridRef, isReady, updateItems };
+}
+
+// Usage
+function MyComponent() {
+  const [items, setItems] = useState<MosaicItem[]>([...]);
+  const { gridRef, isReady } = useMosaicGrid(items);
+
+  return (
+    <div>
+      {isReady && <p>Grid is ready!</p>}
+      <mosaic-grid-widget ref={gridRef} />
+    </div>
+  );
+}
+```
+
+#### React with Dynamic Data Loading
+
+```tsx
+import React, { useEffect, useRef, useState } from 'react';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+function MosaicGridWithData() {
+  const gridRef = useRef<HTMLElement>(null);
+  const [items, setItems] = useState<MosaicItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch data from API
+    fetch('/api/images')
+      .then(res => res.json())
+      .then(data => {
+        const mosaicItems: MosaicItem[] = data.map((img: any, index: number) => ({
+          id: img.id,
+          type: 'image' as const,
+          preview: img.thumbnail,
+          full: img.url,
+          layout: index % 4 === 0 ? 'big' : index % 3 === 0 ? 'wide' : 'normal',
+          title: img.title
+        }));
+        setItems(mosaicItems);
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (grid && items.length > 0) {
+      (grid as any).items = items;
+    }
+  }, [items]);
+
+  if (loading) return <div>Loading...</div>;
+
+  return <mosaic-grid-widget ref={gridRef} />;
+}
+```
+
+### Vue 3
+
+Vue 3 works great with web components. Here's how to use `mosaic-grid-widget`:
+
+#### Basic Vue 3 Example (Composition API)
+
+```vue
+<template>
+  <mosaic-grid-widget ref="gridRef" />
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, watch } from 'vue';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+const gridRef = ref<HTMLElement | null>(null);
+const items = ref<MosaicItem[]>([
+  {
+    id: '1',
+    type: 'image',
+    preview: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4',
+    full: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4',
+    layout: 'big',
+    title: 'Mountain Landscape'
+  },
+  {
+    id: '2',
+    type: 'image',
+    preview: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b',
+    full: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b',
+    layout: 'wide',
+    title: 'Ocean View'
+  }
+]);
+
+onMounted(() => {
+  if (gridRef.value) {
+    (gridRef.value as any).items = items.value;
+  }
+});
+
+watch(items, (newItems) => {
+  if (gridRef.value) {
+    (gridRef.value as any).items = newItems;
+  }
+}, { deep: true });
+</script>
+```
+
+#### Vue 3 with Options API
+
+```vue
+<template>
+  <mosaic-grid-widget ref="grid" />
+</template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+export default defineComponent({
+  name: 'MosaicGrid',
+  data() {
+    return {
+      items: [
+        {
+          id: '1',
+          type: 'image',
+          preview: 'https://example.com/thumb.jpg',
+          full: 'https://example.com/full.jpg',
+          layout: 'normal',
+          title: 'My Image'
+        }
+      ] as MosaicItem[]
+    };
+  },
+  mounted() {
+    const grid = this.$refs.grid as HTMLElement;
+    if (grid) {
+      (grid as any).items = this.items;
+    }
+  },
+  watch: {
+    items: {
+      handler(newItems: MosaicItem[]) {
+        const grid = this.$refs.grid as HTMLElement;
+        if (grid) {
+          (grid as any).items = newItems;
+        }
+      },
+      deep: true
+    }
+  }
+});
+</script>
+```
+
+#### Vue 3 with Props and Events
+
+```vue
+<template>
+  <mosaic-grid-widget 
+    ref="gridRef" 
+    @card-expanded="handleCardExpanded"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, watch } from 'vue';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+interface Props {
+  items: MosaicItem[];
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  itemClick: [item: MosaicItem];
+}>();
+
+const gridRef = ref<HTMLElement | null>(null);
+
+const handleCardExpanded = (event: CustomEvent) => {
+  emit('itemClick', event.detail.item);
+};
+
+onMounted(() => {
+  if (gridRef.value) {
+    (gridRef.value as any).items = props.items;
+  }
+});
+
+watch(() => props.items, (newItems) => {
+  if (gridRef.value) {
+    (gridRef.value as any).items = newItems;
+  }
+}, { deep: true });
+</script>
+```
+
+#### Vue 3 with Dynamic Data
+
+```vue
+<template>
+  <div>
+    <div v-if="loading">Loading grid...</div>
+    <mosaic-grid-widget v-else ref="gridRef" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import 'mosaic-grid-widget';
+import type { MosaicItem } from 'mosaic-grid-widget/types';
+
+const gridRef = ref<HTMLElement | null>(null);
+const items = ref<MosaicItem[]>([]);
+const loading = ref(true);
+
+onMounted(async () => {
+  try {
+    const response = await fetch('/api/images');
+    const data = await response.json();
+    
+    items.value = data.map((img: any, index: number) => ({
+      id: img.id,
+      type: 'image' as const,
+      preview: img.thumbnail,
+      full: img.url,
+      layout: index % 4 === 0 ? 'big' : index % 3 === 0 ? 'wide' : 'normal',
+      title: img.title
+    }));
+    
+    if (gridRef.value) {
+      (gridRef.value as any).items = items.value;
+    }
+    
+    loading.value = false;
+  } catch (error) {
+    console.error('Failed to load images:', error);
+    loading.value = false;
+  }
+});
+</script>
+```
+
+### Framework-Specific Notes
+
+#### React
+- **Refs**: Use `useRef` to get a reference to the custom element
+- **Type Safety**: Extend JSX types or use type assertions for custom element properties
+- **Updates**: Update items by setting the `items` property in a `useEffect` hook
+- **Event Handling**: Listen to custom events using `addEventListener` in `useEffect`
+
+#### Vue 3
+- **Template Refs**: Use `ref` in Composition API or `$refs` in Options API
+- **Reactivity**: Watch the items array and update the grid when it changes
+- **Type Safety**: TypeScript works well with Vue 3's type system
+- **Event Handling**: Use `@event-name` in templates or `addEventListener` in script
+
+#### General Tips
+- Always import `'mosaic-grid-widget'` to register the custom element
+- Import types from `'mosaic-grid-widget/types'` for TypeScript support
+- Update items by directly setting the `items` property on the element
+- The component uses Shadow DOM, so styles are encapsulated
+- Custom events can be listened to for advanced integrations
+
 ## How It Works
 
 ### Architecture

@@ -1,6 +1,6 @@
 {
   "name": "mosaic-grid-widget",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A framework-agnostic web component for creating beautiful, animated mosaic-style content grids with lazy loading and custom previews",
   "author": "",
   "license": "MIT",
