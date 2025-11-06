@@ -8,6 +8,8 @@ A framework-agnostic web component for creating beautiful, animated mosaic-style
 
 - **Responsive Mosaic Layout** - Automatic grid layout with customizable tile sizes (normal, wide, tall, big)
 - **Multiple Content Types** - Support for images, PDFs, videos, markdown files, external links, and custom content
+- **Modular Card Architecture** - Cards are separate components, making customization and testing easier
+- **Card Overlays & Actions** - Add custom overlays (dropdown menus, icons, etc.) and action buttons to any card
 - **Lazy Loading** - Images load automatically as they enter the viewport for optimal performance
 - **Custom Previews** - Use custom HTML or render functions for tile previews (gradients, icons, etc.)
 - **Smooth Animations** - CSS transitions for expand/collapse interactions
@@ -15,6 +17,7 @@ A framework-agnostic web component for creating beautiful, animated mosaic-style
 - **Framework Agnostic** - Works with any framework or vanilla JavaScript
 - **TypeScript** - Full type safety with discriminated unions
 - **Performance Optimized** - Uses `requestAnimationFrame` and GPU acceleration for smooth interactions
+- **Comprehensive Test Suite** - Full test coverage using Vitest and jsdom
 
 ## Installation
 
@@ -24,7 +27,7 @@ npm install mosaic-grid-widget
 
 ## Live Demo
 
-Try the interactive demo with beautiful nature images and various content types:
+Try the interactive demos with beautiful nature images and various content types:
 
 **Run locally:**
 ```bash
@@ -32,9 +35,11 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:5173` in your browser.
+Then open one of these URLs in your browser:
+- **Main Demo**: `http://localhost:5173` - Full-featured demo with 60+ images
+- **Custom Card Overlays**: `http://localhost:5173/custom-card.html` - Demo showcasing dropdown menus
 
-**Demo Features:**
+### Main Demo Features (`/`)
 - 60+ beautiful landscape and nature images from Unsplash
 - Responsive mosaic grid layout with various tile sizes
 - Click any tile to expand and view full content
@@ -42,11 +47,28 @@ Then open `http://localhost:5173` in your browser.
 - Support for PDFs, Markdown files, and custom content types
 - Smooth animations and lazy loading
 
-The demo showcases all features including:
+The main demo showcases:
 - Custom HTML previews (gradient tiles with icons)
 - Lazy-loaded image previews
 - Progressive image loading with fade-in effects
 - Interactive modal for adding new images
+
+### Custom Card Overlays Demo (`/custom-card.html`)
+This demo demonstrates the **card overlay system** with interactive dropdown menus featuring **glassmorphism styling**:
+- **Glassmorphism Design**: Beautiful frosted glass effect with backdrop blur on both the button and dropdown menu
+- **Custom Dropdown Menus**: Each card has a `⋮` icon in the upper-right corner with a glass-like appearance
+- **Click to Open**: Click the icon to open a dropdown menu with actions
+- **Prevents Expansion**: Clicking the dropdown prevents card expansion, allowing custom interactions
+- **Action Examples**: View Details, Edit, Share, Download, Delete (text-only, no emojis for clean design)
+- **Real Functionality**: Includes clipboard sharing, download links, and confirmation dialogs
+- **High Contrast Text**: White text with shadows for excellent readability over any background
+
+This demo shows how to:
+- Add custom overlays to cards using `cardOverlays.topRight`
+- Create interactive dropdown menus that don't interfere with card expansion
+- Handle click events and prevent event propagation
+- Style custom overlays with modern glassmorphism effects
+- Inject styles into Shadow DOM for proper styling isolation
 
 ## Quick Start
 
@@ -100,12 +122,32 @@ The demo showcases all features including:
 
 ### Architecture
 
-The package is built as a **Web Component** using the Custom Elements API and Shadow DOM:
+The package uses a **modular architecture** with separate components for the grid and cards:
 
-1. **Custom Element**: `<mosaic-grid-widget>` is registered as a custom HTML element
-2. **Shadow DOM**: Styles and markup are encapsulated to prevent conflicts with your page styles
-3. **CSS Grid**: Uses CSS Grid Layout for responsive, flexible positioning
-4. **Type Safety**: TypeScript discriminated unions ensure type-safe content definitions
+1. **MosaicGridWidget** (`mosaic-grid.ts`): The main container component that:
+   - Manages grid layout and state
+   - Coordinates card interactions (only one expanded at a time)
+   - Handles intersection observer for lazy loading
+   - Manages shared image cache and preloading
+
+2. **MosaicCard** (`card.ts`): Individual card components that:
+   - Handle their own preview and expanded content rendering
+   - Manage overlays and action buttons
+   - Support progressive image loading
+   - Emit events for grid coordination
+
+3. **Custom Element**: `<mosaic-grid-widget>` is registered as a custom HTML element
+4. **Shadow DOM**: Styles and markup are encapsulated to prevent conflicts with your page styles
+5. **CSS Grid**: Uses CSS Grid Layout for responsive, flexible positioning
+6. **Type Safety**: TypeScript discriminated unions ensure type-safe content definitions
+
+### Modular Design Benefits
+
+- **Separation of Concerns**: Grid handles layout, cards handle content
+- **Extensibility**: Easy to add custom overlays, actions, and UI elements
+- **Testability**: Cards can be tested independently from the grid
+- **Reusability**: Cards can potentially be used outside the grid context
+- **Maintainability**: Smaller, focused modules are easier to understand and modify
 
 ### Component Lifecycle
 
@@ -131,12 +173,20 @@ The grid automatically adjusts based on screen size:
 
 The component handles different content types through a discriminated union pattern:
 
-- **Image**: Displays preview as background, full image on expand. Previews are lazy-loaded by default.
+- **Image**: Displays preview as background, full image on expand. Previews are lazy-loaded by default. Supports progressive loading with fade-in effects.
 - **PDF**: Embeds PDF in an iframe when expanded
 - **Video**: Shows video player with controls
 - **Markdown**: Fetches and displays markdown content (currently as plain text)
 - **External Link**: Opens URL in new tab
 - **Custom**: Uses a custom handler function to render content on click
+
+### Card Customization
+
+Each card can be customized with overlays and actions:
+
+- **Overlays**: Add custom HTML elements at specific positions (top-right, top-left, bottom-right, bottom-left, center)
+- **Actions**: Add action buttons (e.g., dropdown menus, edit buttons) that prevent card expansion when clicked
+- **Custom Content**: Overlays can contain any HTML, including interactive elements like dropdowns, modals, or forms
 
 ### Lazy Loading
 
@@ -252,8 +302,41 @@ type MosaicItem = ImageItem | PdfItem | MarkdownItem | VideoItem | LinkItem | Cu
   previewRenderer?: PreviewRenderHandler; // Optional function to generate preview HTML
   title?: string;
   layout?: LayoutType;
+  cardOverlays?: CardOverlays; // Optional custom overlays
+  cardActions?: CardAction[];   // Optional action buttons
 }
 ```
+
+#### `CardOverlays`
+
+```typescript
+{
+  topRight?: OverlayRenderer;    // Custom overlay at top-right
+  topLeft?: OverlayRenderer;     // Custom overlay at top-left
+  bottomRight?: OverlayRenderer;  // Custom overlay at bottom-right
+  bottomLeft?: OverlayRenderer;   // Custom overlay at bottom-left
+  center?: OverlayRenderer;      // Custom overlay at center
+}
+```
+
+#### `CardAction`
+
+```typescript
+{
+  icon?: string;              // Optional icon (emoji, SVG, or class name)
+  label: string;               // Accessibility label
+  onClick: (item: MosaicItem, cardElement: HTMLElement) => void;
+  position?: OverlayPosition;  // Where to place the button (default: 'top-right')
+}
+```
+
+#### `OverlayRenderer`
+
+```typescript
+type OverlayRenderer = (item: MosaicItem, cardElement: HTMLElement) => HTMLElement;
+```
+
+Function that receives the item and card element, returns an HTMLElement to be placed in the overlay position.
 
 #### `LayoutType`
 
@@ -357,6 +440,96 @@ const customContentTile: CustomItem = {
 };
 ```
 
+### Card with Dropdown Menu Overlay
+
+See the **live demo** at `/custom-card.html` for a complete working example!
+
+```typescript
+// Helper function to create dropdown menu
+function createDropdownMenu(item: MosaicItem, cardElement: HTMLElement): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'dropdown-container';
+  
+  // Menu button (three dots icon)
+  const button = document.createElement('button');
+  button.innerHTML = '⋮';
+  button.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevent card expansion
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  });
+  
+  // Dropdown menu
+  const menu = document.createElement('div');
+  menu.className = 'dropdown-menu';
+  menu.style.display = 'none';
+  
+  // Menu items
+  const items = [
+    { label: 'Edit', action: () => console.log('Edit', item.id) },
+    { label: 'Share', action: () => console.log('Share', item.id) },
+    { label: 'Delete', action: () => console.log('Delete', item.id) },
+  ];
+  
+  items.forEach(item => {
+    const menuItem = document.createElement('button');
+    menuItem.textContent = item.label;
+    menuItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      item.action();
+      menu.style.display = 'none';
+    });
+    menu.appendChild(menuItem);
+  });
+  
+  container.appendChild(button);
+  container.appendChild(menu);
+  return container;
+}
+
+// Use in your item
+const itemWithDropdown: ImageItem = {
+  id: 'img-with-menu',
+  type: 'image',
+  preview: 'thumb.jpg',
+  full: 'full.jpg',
+  cardOverlays: {
+    topRight: createDropdownMenu
+  }
+};
+```
+
+### Card with Action Buttons
+
+```typescript
+const itemWithActions: ImageItem = {
+  id: 'img-with-actions',
+  type: 'image',
+  preview: 'thumb.jpg',
+  full: 'full.jpg',
+  cardActions: [
+    {
+      icon: '✏️',
+      label: 'Edit',
+      position: 'top-right',
+      onClick: (item, cardElement) => {
+        console.log('Edit clicked for', item.id);
+        // Open edit modal, etc.
+      }
+    },
+    {
+      icon: '🗑️',
+      label: 'Delete',
+      position: 'top-right',
+      onClick: (item, cardElement) => {
+        if (confirm('Delete this item?')) {
+          // Delete logic
+        }
+      }
+    }
+  ]
+};
+```
+
 ### Mixed Content Grid
 
 ```typescript
@@ -453,20 +626,76 @@ npm test
 
 Runs Vitest test suite with jsdom environment.
 
+#### How We Test Front-End UI Without Playwright
+
+This project uses **Vitest** with **jsdom** to test the web component without needing a real browser or Playwright. Here's how it works:
+
+**1. jsdom Environment**
+- **jsdom** is a JavaScript implementation of the DOM and HTML standards
+- It provides a virtual browser environment in Node.js
+- We can create DOM elements, attach event listeners, and query the DOM just like in a real browser
+
+**2. Shadow DOM Testing**
+- Web Components use Shadow DOM, which jsdom fully supports
+- We can access shadow roots using `element.shadowRoot`
+- Tests query elements within the shadow DOM to verify rendering
+
+**3. Mock IntersectionObserver**
+- The Intersection Observer API isn't available in jsdom by default
+- We create a mock implementation that simulates intersection events
+- This allows us to test lazy loading behavior
+
+**4. Event Simulation**
+- We simulate user interactions using `element.click()`, `element.dispatchEvent()`, etc.
+- `requestAnimationFrame` is available in jsdom, allowing us to test async DOM updates
+- We use `await` with `requestAnimationFrame` to ensure DOM updates complete
+
+**5. What We Test**
+- **Card Creation**: Verify cards are created with correct structure and attributes
+- **Preview Rendering**: Test different preview types (HTML, renderer, lazy-loaded images)
+- **Expansion/Collapse**: Verify cards expand and collapse correctly
+- **Overlays & Actions**: Test custom overlays and action buttons render and function
+- **Grid Coordination**: Test that only one card expands at a time
+- **Lazy Loading**: Verify images load when they intersect the viewport
+- **Content Types**: Test all content types (image, PDF, video, markdown, custom)
+
+**6. Test Structure**
+```
+tests/
+├── card.test.ts          # Unit tests for MosaicCard class
+├── mosaic-grid.test.ts   # Integration tests for MosaicGridWidget
+```
+
+**Benefits of This Approach:**
+- ✅ **Fast**: No browser startup overhead, tests run in milliseconds
+- ✅ **Reliable**: No flaky browser-related timing issues
+- ✅ **CI/CD Friendly**: Works in any environment without browser dependencies
+- ✅ **Comprehensive**: Can test all logic, DOM manipulation, and component behavior
+- ✅ **Easy Debugging**: Simple console.log debugging, no browser DevTools needed
+
+**Limitations:**
+- ❌ **Visual Testing**: Can't verify actual visual appearance (colors, spacing, etc.)
+- ❌ **Browser-Specific Bugs**: Won't catch browser-specific rendering issues
+- ❌ **Performance**: Can't measure real-world performance metrics
+
+For visual regression testing or browser-specific testing, you could add Playwright/Cypress as an additional test layer, but for component logic and behavior, jsdom is sufficient and much faster.
+
 ### Project Structure
 
 ```
 mosaic-grids/
-??? src/
-?   ??? mosaic-grid.ts    # Main component class
-?   ??? types.ts          # TypeScript type definitions
-??? demo/
-?   ??? index.html        # Demo page
-?   ??? main.ts           # Demo implementation
-??? tests/
-?   ??? mosaic-grid.test.ts  # Test suite
-??? dist/                 # Built files
-??? package.json
+├── src/
+│   ├── mosaic-grid.ts    # Main grid component (MosaicGridWidget)
+│   ├── card.ts           # Card component (MosaicCard)
+│   └── types.ts          # TypeScript type definitions
+├── demo/
+│   ├── index.html        # Demo page
+│   └── main.ts           # Demo implementation
+├── tests/
+│   ├── card.test.ts      # Card component tests
+│   └── mosaic-grid.test.ts  # Grid integration tests
+├── dist/                 # Built files
+└── package.json
 ```
 
 ## Technical Details
@@ -489,10 +718,17 @@ The component includes several performance optimizations:
 
 ### State Management
 
-The component maintains internal state:
+The grid component maintains internal state:
 - `_items`: Array of grid items
 - `_state`: Current grid state ('idle' | 'item-expanded' | 'loading')
-- `expandedTile`: Reference to currently expanded tile
+- `expandedCard`: Reference to currently expanded card instance
+- `cards`: Map of card instances by item ID
+- `imageLoadCache`: Shared cache for preloaded images across all cards
+- `preloadedImages`: Map of preloaded images by card element
+
+Each card maintains its own state:
+- `isExpanded`: Whether the card is currently expanded
+- `overlayElements`: Map of overlay elements by position
 
 ### Animation System
 
@@ -521,6 +757,29 @@ Contributions are welcome! Please ensure:
 - Tests pass (`npm test`)
 - Code follows existing patterns
 - New features include tests
+- Card and grid components remain modular and testable
+
+### Running Tests
+
+```bash
+# Run tests once
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage
+npm test -- --coverage
+```
+
+### Writing Tests
+
+When adding new features:
+1. Add unit tests in `tests/card.test.ts` for card-specific functionality
+2. Add integration tests in `tests/mosaic-grid.test.ts` for grid-level behavior
+3. Test both the happy path and edge cases
+4. Mock external dependencies (fetch, IntersectionObserver, etc.)
+5. Use `requestAnimationFrame` for async DOM updates in tests
 
 ## License
 

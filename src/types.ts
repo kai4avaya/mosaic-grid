@@ -10,6 +10,38 @@ export type CustomRenderHandler = (item: MosaicItem) => Promise<string>;
 // Preview renderer for custom tile previews (synchronous for performance)
 export type PreviewRenderHandler = (item: MosaicItem) => string;
 
+// Overlay position types for card customization
+export type OverlayPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center';
+
+// Overlay renderer function - receives item and card element, returns HTMLElement
+export type OverlayRenderer = (item: MosaicItem, cardElement: HTMLElement) => HTMLElement;
+
+export interface CardCallbacks {
+  onExpand?: (card: MosaicCard) => void;
+  onCollapse?: (card: MosaicCard) => void;
+  onActionClick?: (card: MosaicCard, action: CardAction) => void;
+  intersectionObserver?: IntersectionObserver | null;
+  imageLoadCache?: Map<string, { image: HTMLImageElement; loaded: boolean }>;
+  preloadedImages?: Map<HTMLElement, HTMLImageElement>;
+}
+
+// Card action definition
+export interface CardAction {
+  icon?: string; // Optional icon (can be emoji, SVG, or class name)
+  label: string; // Accessibility label
+  onClick: (item: MosaicItem, cardElement: HTMLElement) => void;
+  position?: OverlayPosition; // Where to place the action button
+}
+
+// Card overlay configuration
+export interface CardOverlays {
+  topRight?: OverlayRenderer;
+  topLeft?: OverlayRenderer;
+  bottomRight?: OverlayRenderer;
+  bottomLeft?: OverlayRenderer;
+  center?: OverlayRenderer;
+}
+
 // 3. Define the base "stub" for any item
 //    All items MUST have a type and a preview image.
 interface MosaicItemBase {
@@ -20,6 +52,9 @@ interface MosaicItemBase {
   previewRenderer?: PreviewRenderHandler; // Optional function to generate custom preview HTML
   title?: string; // Optional title for accessibility/tooltips
   layout?: LayoutType;
+  // Card customization options
+  cardOverlays?: CardOverlays; // Custom overlay elements
+  cardActions?: CardAction[]; // Action buttons (e.g., dropdown menus)
 }
 
 // 4. Create specific interfaces for each "case"

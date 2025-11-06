@@ -1,15 +1,17 @@
 // src/mosaic-grid.ts
-import { MosaicItem, LayoutType, GridState, MarkdownItem, PdfItem, CustomItem, ImageItem, VideoItem, PreviewRenderHandler } from './types';
+import { MosaicItem, GridState } from './types';
+import { MosaicCard, CardCallbacks } from './card';
 
 class MosaicGridWidget extends HTMLElement {
     
     private _items: MosaicItem[] = [];
     private _state: GridState = 'idle';
     private gridWrapper: HTMLDivElement | null = null;
-    private expandedTile: HTMLDivElement | null = null;
+    private expandedCard: MosaicCard | null = null;
+    private cards: Map<string, MosaicCard> = new Map();
     private intersectionObserver: IntersectionObserver | null = null;
     // Track preloaded images: Map<tileElement, Image>
-    private preloadedImages: Map<HTMLDivElement, HTMLImageElement> = new Map();
+    private preloadedImages: Map<HTMLElement, HTMLImageElement> = new Map();
     // Track which full image URLs are currently loading/loaded
     private imageLoadCache: Map<string, { image: HTMLImageElement; loaded: boolean }> = new Map();
 
@@ -25,11 +27,14 @@ class MosaicGridWidget extends HTMLElement {
     }
 
     disconnectedCallback() {
-        // Clean up observer when component is removed
+        // Clean up observer and cards when component is removed
         if (this.intersectionObserver) {
             this.intersectionObserver.disconnect();
             this.intersectionObserver = null;
         }
+        // Clean up all cards
+        this.cards.forEach(card => card.destroy());
+        this.cards.clear();
     }
 
     public set items(data: MosaicItem[]) {
@@ -54,13 +59,14 @@ class MosaicGridWidget extends HTMLElement {
                     grid-auto-rows: 200px;
                 }
 
-                /* 2. Grid Item (Tile) */
+                /* 2. Grid Item (Tile/Card) */
                 .grid-wrapper > div {
                     border-radius: 5px;
-                    overflow: hidden; /* This is good! */
+                    overflow: hidden;
                     background-size: cover;
                     background-position: center;
                     cursor: pointer;
+                    position: relative;
                     /* GPU acceleration and containment for better performance */
                     will-change: transform, opacity;
                     contain: layout style paint;
@@ -85,14 +91,12 @@ class MosaicGridWidget extends HTMLElement {
                 }
 
                 /* 4. Click Interaction Styling */
-                /* Removed overlay effect - other tiles stay fully visible */
                 .grid-wrapper > div.expanded {
                     grid-column: span 2;
                     grid-row: span 2;
                     z-index: 10;
                     opacity: 1;
                     transform: scale(1.05) translateZ(0);
-                    /* Optimize expanded tiles */
                     will-change: transform, opacity;
                 }
                 @media (min-width: 768px) {
@@ -102,14 +106,69 @@ class MosaicGridWidget extends HTMLElement {
                     }
                 }
                 
-                /* 5. Styles for INJECTED content */
+                /* 5. Card Content Container */
+                .card-content {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                }
+                
+                /* 6. Card Overlay Containers */
+                .card-overlay {
+                    position: absolute;
+                    display: none;
+                    pointer-events: none;
+                    z-index: 5;
+                }
+                .card-overlay-top-right {
+                    top: 8px;
+                    right: 8px;
+                }
+                .card-overlay-top-left {
+                    top: 8px;
+                    left: 8px;
+                }
+                .card-overlay-bottom-right {
+                    bottom: 8px;
+                    right: 8px;
+                }
+                .card-overlay-bottom-left {
+                    bottom: 8px;
+                    left: 8px;
+                }
+                .card-overlay-center {
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                }
+                
+                /* Enable pointer events for overlay children */
+                .card-overlay > * {
+                    pointer-events: auto;
+                }
+                
+                /* 7. Card Action Buttons */
+                .card-action-button {
+                    background: rgba(255, 255, 255, 0.9);
+                    border: 1px solid rgba(0, 0, 0, 0.1);
+                    border-radius: 4px;
+                    padding: 6px 10px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: background 0.2s;
+                }
+                .card-action-button:hover {
+                    background: rgba(255, 255, 255, 1);
+                }
+                
+                /* 8. Styles for INJECTED content */
                 .full-content {
                     width: 100%;
                     height: 100%;
-                    object-fit: cover; /* Perfect for images */
+                    object-fit: cover;
                 }
                 
-                /* --- NEW STYLES FOR PDF/MD --- */
+                /* 9. Styles for PDF/MD */
                 .full-content-iframe {
                     width: 100%;
                     height: 100%;
@@ -118,24 +177,52 @@ class MosaicGridWidget extends HTMLElement {
                 .markdown-body {
                     width: 100%;
                     height: 100%;
-                    overflow: auto; /* Adds the scrollbar */
+                    overflow: auto;
                     padding: 10px;
-                    background: #fff; /* Give it a background */
+                    background: #fff;
                     color: #333;
                 }
                 .markdown-body pre {
                     white-space: pre-wrap;
                 }
                 
-                /* 6. Custom HTML Preview Styling */
-                /* Ensure custom preview HTML fills the tile properly */
-                .grid-wrapper > div > * {
+                /* 10. Progressive Image Loading */
+                .progressive-image-container {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                }
+                .progressive-image-preview,
+                .progressive-image-full {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                }
+                .progressive-image-preview {
+                    opacity: 1;
+                    transition: opacity 0.3s ease-in-out;
+                }
+                .progressive-image-full {
+                    opacity: 0;
+                    transition: opacity 0.3s ease-in-out;
+                }
+                .progressive-image-full.loaded {
+                    opacity: 1;
+                }
+                .progressive-image-preview.hidden {
+                    opacity: 0;
+                }
+                
+                /* 11. Custom HTML Preview Styling */
+                .grid-wrapper > div > .card-content > * {
                     width: 100%;
                     height: 100%;
                     display: block;
                     box-sizing: border-box;
                 }
-                /* Note: For flex/grid layouts, users should set display: flex/grid inline */
             </style>
             
             <div class="grid-wrapper"></div>
@@ -146,43 +233,36 @@ class MosaicGridWidget extends HTMLElement {
     private populateGrid() {
         if (!this.gridWrapper) return;
         
-        const wrapper = this.gridWrapper; // Store reference for TypeScript narrowing
+        // Clean up existing cards
+        this.cards.forEach(card => card.destroy());
+        this.cards.clear();
+        
+        const wrapper = this.gridWrapper;
         wrapper.innerHTML = ''; 
         
         if (this._items.length === 0) return;
         
+        // Create card callbacks
+        const cardCallbacks: CardCallbacks = {
+            onExpand: (card) => this.handleCardExpand(card),
+            onCollapse: (card) => this.handleCardCollapse(card),
+            onActionClick: (card, action) => this.handleCardAction(card, action),
+            intersectionObserver: this.intersectionObserver,
+            imageLoadCache: this.imageLoadCache,
+            preloadedImages: this.preloadedImages
+        };
+        
+        // Create a card for each item
         this._items.forEach(item => {
-            const div = document.createElement('div');
-            div.className = item.layout || 'normal';
-            div.dataset.id = item.id;
-            div.setAttribute('role', 'button');
-            div.setAttribute('aria-label', `View ${item.title || item.type}`);
+            const card = new MosaicCard(item, cardCallbacks);
+            const cardElement = card.getElement();
             
-            // Custom preview rendering: priority: previewRenderer > previewHtml > preview image
-            if (item.previewRenderer) {
-                // Dynamic preview from function
-                div.innerHTML = item.previewRenderer(item);
-            } else if (item.previewHtml) {
-                // Static HTML preview
-                div.innerHTML = item.previewHtml;
-            } else {
-                // Lazy load preview images - store URL in data attribute
-                div.dataset.previewUrl = item.preview;
-                // Don't set backgroundImage yet - Intersection Observer will load it
-                // Set a placeholder or empty state initially
-                div.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
-            }
+            this.cards.set(item.id, card);
+            wrapper.appendChild(cardElement);
             
-            wrapper.appendChild(div);
-            
-            // Observe this tile for lazy loading (only if it uses background image)
+            // Setup intersection observer for lazy loading
             if (!item.previewRenderer && !item.previewHtml && this.intersectionObserver) {
-                this.intersectionObserver.observe(div);
-            }
-            
-            // Add hover listeners for image preloading (only for image items)
-            if (item.type === 'image') {
-                this._attachHoverPreload(div, item as ImageItem);
+                this.intersectionObserver.observe(cardElement);
             }
         });
     }
@@ -194,29 +274,22 @@ class MosaicGridWidget extends HTMLElement {
         }
         
         // Create Intersection Observer for lazy loading images
-        // Load images when they're within 200px of viewport (rootMargin)
-        // Use document as root since shadow DOM elements need document viewport
         this.intersectionObserver = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
-                    const tile = entry.target as HTMLDivElement;
-                    const previewUrl = tile.dataset.previewUrl;
+                    const cardElement = entry.target as HTMLElement;
+                    const cardId = cardElement.dataset.id;
                     
-                    if (entry.isIntersecting && previewUrl) {
-                        // Load the background image
-                        tile.style.backgroundImage = `url(${previewUrl})`;
-                        tile.removeAttribute('data-preview-url');
-                        tile.style.backgroundColor = ''; // Remove placeholder
-                        
-                        // Stop observing this tile (image is now loaded)
-                        this.intersectionObserver?.unobserve(tile);
+                    if (cardId && this.cards.has(cardId)) {
+                        const card = this.cards.get(cardId)!;
+                        card.handleIntersection(entry);
                     }
                 });
             },
             {
-                root: null, // Use viewport (document)
-                rootMargin: '200px', // Start loading 200px before tile enters viewport
-                threshold: 0.01 // Trigger as soon as any part is visible
+                root: null,
+                rootMargin: '200px',
+                threshold: 0.01
             }
         );
     }
@@ -228,358 +301,84 @@ class MosaicGridWidget extends HTMLElement {
 
         this.shadowRoot.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
-            const clickedTile = target.closest<HTMLDivElement>('.grid-wrapper > div');
+            const clickedCardElement = target.closest<HTMLDivElement>('.grid-wrapper > div');
 
-            if (clickedTile) {
-                const item = this._items.find(i => i.id === clickedTile.dataset.id);
-                if (item) this.onItemClick(item, clickedTile);
-            } else {
-                this.resetGrid();
-            }
-        });
-    }
-    
-    /**
-     * Attach hover listeners to preload full images
-     * This starts downloading the full image when user hovers, so it's ready on click
-     */
-    private _attachHoverPreload(tile: HTMLDivElement, item: ImageItem) {
-        let hoverTimeout: number | null = null;
-        let preloadImage: HTMLImageElement | null = null;
-        
-        // On hover: start preloading full image after a small delay (prevents preloading on accidental hovers)
-        tile.addEventListener('mouseenter', () => {
-            // Small delay to avoid preloading on quick mouse movements
-            hoverTimeout = window.setTimeout(() => {
-                this._preloadFullImage(item.full, tile);
-            }, 100); // 100ms delay
-        });
-        
-        // On mouse leave: cancel preload if not needed (though browser will cache it anyway)
-        tile.addEventListener('mouseleave', () => {
-            if (hoverTimeout !== null) {
-                clearTimeout(hoverTimeout);
-                hoverTimeout = null;
-            }
-        });
-    }
-    
-    /**
-     * Preload a full image URL and cache it
-     * Uses a shared cache so multiple tiles with same URL don't duplicate requests
-     */
-    private _preloadFullImage(fullUrl: string, tile: HTMLDivElement): void {
-        // Check if already cached/loading
-        const cached = this.imageLoadCache.get(fullUrl);
-        if (cached) {
-            // Already loading or loaded, just store reference
-            this.preloadedImages.set(tile, cached.image);
-            return;
-        }
-        
-        // Create new Image object to preload
-        const img = new Image();
-        img.src = fullUrl;
-        
-        // Store in cache
-        this.imageLoadCache.set(fullUrl, { image: img, loaded: false });
-        this.preloadedImages.set(tile, img);
-        
-        // Mark as loaded when complete
-        img.onload = () => {
-            const cached = this.imageLoadCache.get(fullUrl);
-            if (cached) {
-                cached.loaded = true;
-            }
-        };
-        
-        // Handle errors gracefully
-        img.onerror = () => {
-            // Remove from cache on error so we can retry later
-            this.imageLoadCache.delete(fullUrl);
-            this.preloadedImages.delete(tile);
-        };
-    }
-    
-    private async onItemClick(item: MosaicItem, tile: HTMLDivElement) {
-        if (item.type === 'external_link') {
-            window.open(item.url, '_blank', 'noopener,noreferrer');
-            return;
-        }
-
-        const isAlreadyExpanded = tile.classList.contains('expanded');
-        
-        // Safety check: ensure gridWrapper exists
-        if (!this.gridWrapper) {
-            return;
-        }
-
-        // If clicking the same tile, just collapse it
-        if (isAlreadyExpanded) {
-            // Use RAF to batch the reset
-            requestAnimationFrame(() => {
-                this.resetGrid();
-            });
-            return;
-        }
-
-        // Store previous expanded tile reference before reset
-        const previousTile = this.expandedTile;
-
-        // Batch ALL DOM operations in a single frame to minimize reflows
-        requestAnimationFrame(() => {
-            // Reset previous tile if it exists (batched with expansion)
-            if (previousTile && previousTile !== tile) {
-                this._resetTile(previousTile);
-            }
-
-            // Expand new tile - all in same frame
-            this.gridWrapper!.classList.add('item-is-expanded');
-            tile.classList.add('expanded');
-            this.expandedTile = tile; 
-            this._state = 'item-expanded';
-
-            // Set content immediately for instant visual feedback
-            tile.style.backgroundImage = 'none';
-
-            // For synchronous content (images), render final content immediately
-            // For async content (markdown, custom), show placeholder then load
-            if (this._isSynchronousContent(item)) {
-                const contentHTML = this._getContentSync(item, tile);
-                tile.innerHTML = contentHTML;
-                
-                // If image wasn't preloaded, we need to handle the fade-in manually
-                // (preloaded images already have the loaded class)
-                if (item.type === 'image') {
-                    this._setupProgressiveImageFade(tile);
+            if (clickedCardElement) {
+                const cardId = clickedCardElement.dataset.id;
+                if (cardId && this.cards.has(cardId)) {
+                    const card = this.cards.get(cardId)!;
+                    const item = card.getItem();
+                    
+                    // Handle external links
+                    if (item.type === 'external_link') {
+                        window.open((item as any).url, '_blank', 'noopener,noreferrer');
+                        return;
+                    }
+                    
+                    // Handle card click
+                    this.handleCardClick(card);
                 }
             } else {
-                // Show placeholder, then load async content
-                tile.innerHTML = this._generateInlineContent(item);
-                this._loadContentAsync(item, tile);
+                // Click outside cards - reset grid
+                this.resetGrid();
             }
         });
     }
-
-    private _resetTile(tile: HTMLDivElement) {
-        // Optimized tile reset - avoids finding item if not needed
-        tile.classList.remove('expanded');
-        const itemId = tile.dataset.id;
-        const item = itemId ? this._items.find(i => i.id === itemId) : null;
-        if (item) {
-            // Clear expanded content first
-            tile.innerHTML = '';
-            
-            // Restore preview based on type (same priority as populateGrid)
-            if (item.previewRenderer) {
-                // Dynamic preview from function
-                tile.innerHTML = item.previewRenderer(item);
-            } else if (item.previewHtml) {
-                // Static HTML preview
-                tile.innerHTML = item.previewHtml;
-            } else {
-                // Default: background image
-                tile.style.backgroundImage = `url(${item.preview})`;
-            }
-        }
-        
-        // Clean up preload reference (image stays in cache for reuse)
-        this.preloadedImages.delete(tile);
-    }
     
-    /**
-     * Setup progressive image fade-in for images that weren't preloaded
-     * This ensures the fade animation works even if image loads after DOM insertion
-     */
-    private _setupProgressiveImageFade(tile: HTMLDivElement): void {
-        const fullImg = tile.querySelector('.progressive-image-full') as HTMLImageElement;
-        const previewImg = tile.querySelector('.progressive-image-preview') as HTMLImageElement;
+    private async handleCardClick(card: MosaicCard) {
+        const isAlreadyExpanded = card.getExpanded();
         
-        if (!fullImg || !previewImg) return;
-        
-        // If image is already loaded (preloaded), trigger fade immediately
-        if (fullImg.complete && fullImg.naturalWidth > 0) {
-            // Use RAF to ensure DOM is ready
+        if (isAlreadyExpanded) {
+            // Collapse if already expanded
             requestAnimationFrame(() => {
-                fullImg.classList.add('loaded');
-                previewImg.classList.add('hidden');
+                this.resetGrid();
             });
             return;
         }
-        
-        // Otherwise, wait for load event
-        fullImg.addEventListener('load', () => {
-            requestAnimationFrame(() => {
-                fullImg.classList.add('loaded');
-                previewImg.classList.add('hidden');
-            });
-        }, { once: true });
-        
-        // Handle case where image fails to load
-        fullImg.addEventListener('error', () => {
-            // Keep preview visible if full image fails
-            console.warn('Failed to load full image:', fullImg.src);
-        }, { once: true });
+
+        // Store previous expanded card reference
+        const previousCard = this.expandedCard;
+
+        // Batch ALL DOM operations in a single frame
+        requestAnimationFrame(async () => {
+            // Reset previous card if it exists
+            if (previousCard && previousCard !== card) {
+                previousCard.collapse();
+            }
+
+            // Expand new card
+            this.gridWrapper!.classList.add('item-is-expanded');
+            this.expandedCard = card;
+            this._state = 'item-expanded';
+            
+            await card.expand();
+        });
     }
-
-    private async _loadContentAsync(item: MosaicItem, tile: HTMLDivElement) {
-        try {
-            const contentHTML = await this._getContent(item);
-
-            // Check if tile is still the expanded one before updating
-            if (this.expandedTile === tile) {
-                // Batch DOM update in next frame
-                requestAnimationFrame(() => {
-                    if (this.expandedTile === tile) {
-                        tile.innerHTML = contentHTML;
-                    }
-                });
-            }
-        } catch (error) {
-            if (this.expandedTile === tile) {
-                requestAnimationFrame(() => {
-                    if (this.expandedTile === tile) {
-                        tile.innerHTML = `<p>Error loading content.</p>`;
-                    }
-                });
-            }
-        }
+    
+    private handleCardExpand(card: MosaicCard) {
+        // Grid-level handling when a card expands
+        // This is called by the card after it expands
+    }
+    
+    private handleCardCollapse(card: MosaicCard) {
+        // Grid-level handling when a card collapses
+        // This is called by the card after it collapses
+    }
+    
+    private handleCardAction(card: MosaicCard, action: any) {
+        // Grid-level handling for card action clicks
+        // Actions are already handled by the card, this is for grid-level coordination if needed
     }
     
     private resetGrid() {
         // Batch DOM updates to minimize reflows
-        if (this.expandedTile) {
-            this._resetTile(this.expandedTile);
-            this.expandedTile = null;
+        if (this.expandedCard) {
+            this.expandedCard.collapse();
+            this.expandedCard = null;
         }
         
         this.gridWrapper?.classList.remove('item-is-expanded');
         this._state = 'idle';
-    }
-
-    private _isSynchronousContent(item: MosaicItem): boolean {
-        // Images, videos, and PDFs can be rendered synchronously
-        return item.type === 'image' || item.type === 'video' || item.type === 'pdf';
-    }
-
-    private _getContentSync(item: MosaicItem, tile?: HTMLDivElement): string {
-        // Synchronous content generation (no async operations)
-        switch (item.type) {
-            case 'image':
-                const imageItem = item as ImageItem;
-                // Progressive loading: show preview first, then fade in full image
-                return this._generateProgressiveImageHTML(imageItem, tile);
-            
-            case 'video':
-                const videoItem = item as VideoItem;
-                return `<video src=\"${videoItem.src}\" controls autoplay muted class=\"full-content\"></video>`;
-            
-            case 'pdf':
-                const pdfItem = item as PdfItem;
-                return `<iframe src=\"${pdfItem.src}\" class=\"full-content-iframe\" title=\"${item.title || 'PDF Document'}\"\"></iframe>`;
-            
-            default:
-                return `<p>Unsupported content type for sync rendering.</p>`;
-        }
-    }
-    
-    /**
-     * Generate HTML for progressive image loading
-     * Shows preview immediately, then fades in full image when loaded
-     */
-    private _generateProgressiveImageHTML(item: ImageItem, tile?: HTMLDivElement): string {
-        const alt = item.title || '';
-        const previewUrl = item.preview;
-        const fullUrl = item.full;
-        
-        // Check if image was preloaded (from hover)
-        let preloadedImg: HTMLImageElement | null = null;
-        if (tile) {
-            preloadedImg = this.preloadedImages.get(tile) || null;
-        }
-        
-        // If preloaded and already loaded, we can show it immediately
-        const isPreloaded = preloadedImg && preloadedImg.complete && preloadedImg.naturalWidth > 0;
-        
-        // Generate container with preview and full image
-        // Note: Event listeners are set up in _setupProgressiveImageFade() for non-preloaded images
-        return `
-            <div class="progressive-image-container">
-                <img src="${previewUrl}" alt="${alt}" class="progressive-image-preview" />
-                <img src="${fullUrl}" alt="${alt}" class="progressive-image-full ${isPreloaded ? 'loaded' : ''}" />
-            </div>
-        `;
-    }
-
-    private async _getContent(item: MosaicItem): Promise<string> {
-        // Handle custom type with handler
-        if (item.type === 'custom') {
-            const customItem = item as CustomItem;
-            if (customItem.handler) {
-                return await customItem.handler(item);
-            }
-            return `<p>Custom item missing handler.</p>`;
-        }
-
-        // Handle built-in types
-        switch (item.type) {
-            case 'image':
-                const imageItem = item as ImageItem;
-                return `<img src="${imageItem.full}" alt="${item.title || ''}" class="full-content">`;
-            
-            case 'video':
-                const videoItem = item as VideoItem;
-                return `<video src="${videoItem.src}" controls autoplay muted class="full-content"></video>`;
-            
-            case 'pdf':
-                const pdfItem = item as PdfItem;
-                return `<iframe src="${pdfItem.src}" class="full-content-iframe" title="${item.title || 'PDF Document'}""></iframe>`;
-            
-            case 'markdown':
-                return await this._fetchMarkdown(item as MarkdownItem);
-            
-            default:
-                return `<p>Unsupported content type.</p>`;
-        }
-    }
-
-    // 3. (CHANGED) _fetchMarkdown now *returns* the HTML string
-    private async _fetchMarkdown(item: MarkdownItem): Promise<string> {
-        try {
-            const response = await fetch(item.src);
-            if (!response.ok) throw new Error('Network response was not ok');
-            const mdText = await response.text();
-            // In a real package, you'd bundle a parser like 'marked'
-            return `<div class="markdown-body"><pre>${mdText}</pre></div>`;
-        } catch (error) {
-            return `<div class="markdown-body"><p>Error loading content.</p></div>`;
-        }
-    }
-   
-    // This function now handles all inline cases
-    private _generateInlineContent(item: MosaicItem): string {
-        switch (item.type) {
-            case 'image':
-                const imageItem = item as ImageItem;
-                return `<img src="${imageItem.full}" alt="${item.title || ''}" class="full-content">`;
-            
-            case 'video':
-                const videoItem = item as VideoItem;
-                return `<video src="${videoItem.src}" controls autoplay muted class="full-content"></video>`;
-            
-            case 'pdf':
-                const pdfItem = item as PdfItem;
-                return `<iframe src="${pdfItem.src}" class="full-content-iframe" title="${item.title || 'PDF Document'}""></iframe>`;
-            
-            case 'markdown':
-                return `<div class="markdown-body">Loading Markdown...</div>`;
-            
-            case 'custom':
-                return `<div class="markdown-body">Loading custom content...</div>`;
-            
-            default:
-                return `<p>Unsupported content type for inline view.</p>`;
-        }
     }
 }
 
