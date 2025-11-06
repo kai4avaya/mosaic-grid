@@ -1,6 +1,6 @@
 {
   "name": "mosaic-grid-widget",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "A framework-agnostic web component for creating beautiful, animated mosaic-style content grids with lazy loading and custom previews",
   "author": "",
   "license": "MIT",
@@ -26,6 +26,7 @@
     "clean": "rimraf dist",
     "clean:docs": "rimraf docs",
     "prepare": "npm run build",
+    "prepublishOnly": "npm run clean && npm run build",
     "test": "vitest"
   },
   "keywords": [
@@ -45,6 +46,12 @@
     "url": "https://github.com/kai4avaya/mosaic-grid/issues"
   },
   "homepage": "https://github.com/kai4avaya/mosaic-grid#readme",
+  "files": [
+    "dist",
+    "src/types.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "devDependencies": {
     "typescript": "^5.3.3",
     "rimraf": "^5.0.5",

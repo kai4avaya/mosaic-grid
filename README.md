@@ -19,8 +19,34 @@ A framework-agnostic web component for creating beautiful, animated mosaic-style
 ## Installation
 
 ```bash
-npm install mosaic-grid-package
+npm install mosaic-grid-widget
 ```
+
+## Live Demo
+
+Try the interactive demo with beautiful nature images and various content types:
+
+**Run locally:**
+```bash
+npm install
+npm run dev
+```
+
+Then open `http://localhost:5173` in your browser.
+
+**Demo Features:**
+- 60+ beautiful landscape and nature images from Unsplash
+- Responsive mosaic grid layout with various tile sizes
+- Click any tile to expand and view full content
+- Add new images dynamically via the "+" tile
+- Support for PDFs, Markdown files, and custom content types
+- Smooth animations and lazy loading
+
+The demo showcases all features including:
+- Custom HTML previews (gradient tiles with icons)
+- Lazy-loaded image previews
+- Progressive image loading with fade-in effects
+- Interactive modal for adding new images
 
 ## Quick Start
 
@@ -37,8 +63,8 @@ npm install mosaic-grid-package
   <mosaic-grid-widget></mosaic-grid-widget>
 
   <script type="module">
-    import 'mosaic-grid-package';
-    import { MosaicItem } from 'mosaic-grid-package/types';
+    import 'mosaic-grid-widget';
+    import { MosaicItem } from 'mosaic-grid-widget/types';
 
     const items: MosaicItem[] = [
       {

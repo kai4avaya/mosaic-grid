@@ -14,10 +14,13 @@ export default defineConfig({
     
     // 1. Configuration for 'npm run build'
     build: {
+        outDir: resolve(__dirname, 'dist'), // Explicitly set output directory to root/dist
+        emptyOutDir: true, // Clear dist folder before building
         lib: {
             entry: resolve(__dirname, 'src/mosaic-grid.ts'),
             name: 'MosaicGridWidget',
-            fileName: 'mosaic-grid'
+            fileName: 'mosaic-grid',
+            formats: ['es', 'umd'] // Build both ES module and UMD formats
         },
         rollupOptions: {
             external: [],
